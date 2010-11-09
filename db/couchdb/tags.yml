@@ -1,0 +1,217 @@
+# Panmind Devonian - (C) 2010 Mind2Mind S.r.l
+# Views for Network Tags into the ReS Context
+#
+_id: _design/tags
+ver: 2010032901
+language: javascript
+
+views:
+  tags:
+    map: |
+      function (doc) {
+        if (doc.tagged)
+          emit (doc._id, doc.tagged)
+      }
+    reduce: :reduce_to_list
+
+  tags_with_count:
+    map: |
+      function (doc) {
+        if (doc.tagged)
+          emit (doc._id, doc.tagged)
+      }
+    reduce: :reduce_to_hash
+
+  tags_by_date:
+    map: |
+      function (doc) {
+        if (doc.tagged)
+          emit (doc.timestamp, doc.tagged)
+      }
+    reduce: :reduce_to_hash_list
+
+  # Maps all documents to (tag, item_id) and reduces to an hashmap
+  # of res id -> item id tagged with a tag.
+  #
+  #tagged_with:
+  #  map: |
+  #    function (doc) {
+  #      if (doc.tagged)
+  #        emit (doc.tagged, {res: doc.res_id, item: doc.asset_id})
+  #    }
+  #  reduce: :reduce_to_hash_map
+
+  # Maps all documents to (tag, item_id) and reduces to an array
+  # of unique items tagged with a tag.
+  #
+  tagged_with:
+    map: |
+      function (doc) {
+        if (doc.tagged)
+          emit (doc.tagged, doc.asset_id)
+      }
+    reduce: :reduce_to_list_int
+
+  # Maps all documents to (tag, 1) and reduces to an integer
+  # representing the number of occurrences of each tag
+  #
+  taggings:
+    map: |
+      function (doc) {
+        if (doc.tagged)
+          emit (doc.tagged, 1)
+      }
+    reduce: |
+      function (keys, values) {
+        return sum (values)
+      }
+
+  # Maps all documents to (user_id, document) and reduces
+  # to the count of them.
+  #
+  user_taggings:
+    map: |
+      function (doc) {
+        if (doc.tagged)
+          emit (doc.user_id, doc)
+      }
+    reduce: |
+      function (keys, values, rereduce) {
+        if (rereduce)
+          return sum (values)
+        else
+          return values.length
+      }
+
+  user_tags:
+    map: |
+      function (doc) {
+        if (doc.tagged)
+          emit (doc.user_id, doc.tagged)
+      }
+    reduce: :reduce_to_list
+
+  # Returns the tags applied globally by a given user with counts
+  #
+  user_tags_with_count:
+    map: |
+      function (doc) {
+        if (doc.tagged)
+          emit (doc.user_id, doc.tagged)
+      }
+    reduce: :reduce_to_hash
+
+  # Maps all documents to (item_id, document) and reduces to the
+  # count of them.
+  #
+  item_taggings:
+    map: |
+      function (doc) {
+        if (doc.tagged)
+          emit (doc.asset_id, doc)
+      }
+    reduce: |
+      function (keys, values, rereduce) {
+        if (rereduce)
+          return sum (values)
+        else
+          return values.length
+      }
+
+  # Maps all documents to (item_id, tag) and reduces to an array
+  # of unique tags associated to the item.
+  #
+  item_tags:
+    map: |
+      function (doc) {
+        if (doc.tagged)
+          emit (doc.asset_id, doc.tagged)
+      }
+    reduce: :reduce_to_list
+
+  # Maps all documents to (item_id, tag) and reduces to an object whose
+  # keys are tags and values are number of occurrences of the tag on the
+  # item (e.g. {"foo": 3, "bar": 1}).
+  #
+  item_tags_with_count:
+    map: |
+      function (doc) {
+        if (doc.tagged)
+          emit (doc.asset_id, doc.tagged)
+      }
+    reduce: :reduce_to_hash
+
+  item_tags_by_user:
+    map: |
+      function (doc) {
+        if (doc.tagged)
+          emit ([doc.asset_id, doc.user_id], doc.tagged)
+      }
+    reduce: :reduce_to_list
+
+  item_is_tagged_by_user_with:
+    map: |
+      function (doc) {
+        if (doc.tagged)
+          emit ([doc.asset_id, doc.user_id, doc.tagged], doc)
+      }
+
+    reduce: |
+      function (keys, values) {
+        return values.length > 0
+      }
+
+  item_related_tags:
+    map: |
+      function (doc) {
+        if (doc.tagged)
+          emit (doc.tagged, doc.asset_id)
+      }
+
+    reduce: |
+      function (keys, values, rereduce) {
+
+        var uniq_push = function (hash, key, value) {
+          if (hash[key]) {
+            if (hash[key].indexOf (value) == -1)
+              hash[key].push (value)
+          } else {
+            hash[key] = [value]
+          }
+        }
+
+        var by_item = {}, by_tag = {}
+
+        if (rereduce == false) {
+          var tag, item
+
+          keys.forEach (function (key, i) {
+            tag  = key[0]
+            item = values[i]
+
+            uniq_push (by_tag, tag, item)
+            uniq_push (by_item, item, tag)
+          })
+        } else {
+          // XXX TODO
+        }
+
+        var related = {}
+
+        for (var tag in by_tag) {
+          var items = by_tag[tag]
+          related[tag] = []
+
+          items.forEach (function (item) {
+            by_item[item].forEach (function (candidate) {
+              if (related[tag].indexOf (candidate) == -1)
+                related[tag].push (candidate)
+            })
+          })
+        }
+
+        return related
+      }
+
+
+# EOF

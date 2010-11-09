@@ -1,0 +1,56 @@
+# Panmind Devonian - (C) 2010 Mind2Mind S.r.l
+# Views for Network ReS <-> items links.
+#
+_id: _design/links
+ver: 2010041301
+language: javascript
+
+views:
+  items_in_res:
+    map: |
+      function (doc) {
+        if (doc.linked)
+          emit (doc.res_id, doc.asset_id)
+      }
+    reduce: :reduce_to_list_int
+
+  items_by_date:
+    map: |
+      function (doc) {
+        if (doc.linked)
+          emit ([doc.res_id, doc.timestamp], doc.asset_id)
+      }
+
+  items_count_in_res:
+    map: |
+      function (doc) {
+        if (doc.linked)
+          emit (doc.res_id, 1)
+      }
+
+    reduce: |
+      function (keys, values, rereduce) {
+        return sum (values)
+      }
+
+  res_containing_item:
+    map: |
+      function (doc) {
+        if (doc.linked)
+          emit (doc.asset_id, doc.res_id)
+      }
+    reduce: :reduce_to_list
+
+  belongs_to_res:
+    map: |
+      function (doc) {
+        if (doc.linked)
+          emit ([doc.res_id, doc.asset_id], doc)
+      }
+
+    reduce: |
+      function (keys, values) {
+        return values.length > 0
+      }
+
+# EOF

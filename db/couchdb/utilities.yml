@@ -1,0 +1,30 @@
+# Panmind Devonian - (C) 2010 Mind2Mind S.r.l
+# Views for Network ReS followings
+#
+_id: _design/utilities
+ver: 2010040601
+language: javascript
+
+views:
+  res_activities:
+    map: |
+      function (doc) {
+        if (doc.res_id && doc.asset_id)
+          emit ([doc.res_id, doc.timestamp], doc)
+      }
+
+  asset_activities:
+    map: |
+      function (doc) {
+        if (doc.asset_id)
+          emit ([doc.asset_id, doc.timestamp], doc)
+      }
+
+  user_activities:
+    map: |
+      function (doc) {
+        if (doc.user_id && doc.asset_id)
+          emit ([doc.user_id, doc.timestamp], doc)
+      }
+
+# EOF

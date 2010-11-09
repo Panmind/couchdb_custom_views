@@ -1,0 +1,93 @@
+# Panmind Devonian - (C) 2010 Mind2Mind S.r.l
+# Views for Network ReS <-> items links.
+#
+_id: _design/likes
+ver: 2010040804
+language: javascript
+
+views:
+  item_like_flag_by_res_and_user:
+    map: |
+      function (doc) {
+        if (doc.liked !== undefined)
+          emit ([doc.asset_id, doc.res_id, doc.user_id], doc.liked)
+      }
+
+  item_like_doc_by_res_and_user:
+    map: |
+      function (doc) {
+        if (doc.liked !== undefined)
+          emit ([doc.asset_id, doc.res_id, doc.user_id], doc)
+      }
+
+  item_likes_count:
+    map: |
+      function (doc) {
+        if (doc.liked === true)
+          emit ([doc.asset_id, doc.res_id], 1)
+      }
+
+    reduce: |
+      function (keys, values) {
+        return sum (values)
+      }
+
+  item_dislikes_count:
+    map: |
+      function (doc) {
+        if (doc.liked === false)
+          emit ([doc.asset_id, doc.res_id], 1)
+      }
+
+    reduce: |
+      function (keys, values) {
+        return sum (values)
+      }
+
+  most_liked_in_res:
+    map: |
+      function (doc) {
+        if (doc.liked !== undefined)
+          emit ([doc.res_id, doc.asset_id], doc.liked ? 1 : -1)
+      }
+
+    reduce: |
+      function (keys, values, rereduce) {
+        var likes = {}
+
+        if (rereduce == false) {
+
+          keys.forEach (function (key, i) {
+            var asset_id = key[0][1] // [ [ res_id, asset_id ], doc_id ]
+            if (likes[asset_id] == undefined)
+              likes[asset_id] = 0
+
+            likes[asset_id] += values[i]
+          })
+
+        } else {
+
+          values.forEach (function (result) {
+            result.forEach (function (val) {
+              var asset_id = val[0], count = val[1]
+
+              if (likes[asset_id] == undefined)
+                likes[asset_id] = 0
+
+              likes[asset_id] += count
+            })
+          })
+
+        }
+
+        var counters = []
+        for (asset in likes)
+          counters.push ([parseInt (asset), likes[asset]])
+
+        return counters.sort (function (x, y) {
+          x = x[1]; y = y[1]
+          return x > y ? -1 : x == y ? 0 : 1
+        })
+      }
+
+# EOF

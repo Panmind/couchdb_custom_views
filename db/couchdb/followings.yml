@@ -1,0 +1,49 @@
+# Panmind Devonian - (C) 2010 Mind2Mind S.r.l
+# Views for Network ReS followings
+#
+_id: _design/followings
+ver: 2010040701
+language: javascript
+
+views:
+  followers:
+    map: |
+      function (doc) {
+        if (doc.followed)
+          emit (doc.res_id, doc.user_id)
+      }
+    reduce: :reduce_to_list_int
+
+  followers_count:
+    map: |
+      function (doc) {
+        if (doc.followed)
+          emit (doc.res_id, 1)
+      }
+
+    reduce: |
+      function (keys, values, rereduce) {
+        return sum (values)
+      }
+
+  follows:
+    map: |
+      function (doc) {
+        if (doc.followed)
+          emit ([doc.res_id, doc.user_id], doc)
+      }
+
+    reduce: |
+      function (keys, values) {
+        return values.length > 0
+      }
+
+  by_user:
+    map: |
+      function (doc) {
+        if (doc.followed)
+          emit (doc.user_id, doc.res_id)
+      }
+    reduce: :reduce_to_list
+
+# EOF
